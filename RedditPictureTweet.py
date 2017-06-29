@@ -21,6 +21,7 @@ TWITTER_CONSUMER_SECRET = ''
 TWITTER_ACCESS_TOKEN = ''
 TWITTER_ACCESS_SECRET = ''
 
+# We will analyze this Twitter user's tweets to avoid tweeting duplicates
 TWITTER_USERNAME = ''
 
 # Subreddit that we grab posts to tweet
@@ -83,6 +84,7 @@ def download_image(imageURL) :
     custom_header = {'user-agent': 'RedditSpacePics /u/spacepictures123'}
     r = requests.get(imageURL, stream=True, headers=custom_header)
 
+    # If we successfully get URL we save the image
     if r.status_code == 200:
         with open(fileSaveName, 'wb') as f:
             r.raw.decode_content = True
@@ -118,6 +120,7 @@ def add_tweets_set(set_of_tweets, list_of_tweets) :
         # Unescapes all escaped characters in the string, first ran into problem with "&amp;" for "&"
         tweet_text = html.unescape(tweet_text)
 
+        # Add the tweet to our set for checking duplicates later
         set_of_tweets.add(tweet_text)
 
 # Initalizes praw by using Reddit client ID/Secret, reddit Username/Password and userAgent
@@ -128,20 +131,17 @@ auth = set_tweepy(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET)
 set_tweepy_access(auth, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
 api = tweepy.API(auth)
 
-# Set the subreddit and tweet delay
+# Set the subreddit for posts to grab and tweet
 subreddit = reddit.subreddit(REDDIT_SUBREDDIT)
-
 
 # Retrieves all tweets (3200 limit) for a specific user
 user_tweets = get_all_Tweets(TWITTER_USERNAME)
 
-
-# Stores text for tweets in a set for looking up duplicate later
+# Stores text for tweets in a set for looking up duplicate tweets
 set_tweets = set()
 add_tweets_set(set_tweets, user_tweets)
 
-
-# Loop through # of tweets from subreddit's hot category
+# Loop through # of tweets from subreddit's hot/top/etc category
 for submission in subreddit.hot(limit=100) :
     # Text that we will be tweeting
     text_to_tweet = submission.title + TWEET_SIGNATURE
@@ -175,6 +175,7 @@ for submission in subreddit.hot(limit=100) :
                 print('This file is corrupted - ' + fileSaveName)
 
     else :
+        # Prints reason why we didn't tweet the image based on the 3 cases
         if len(text_to_tweet) > 140 :
             print("We did not tweet " + submission.title + " because text is too long")
         elif submission.score < POST_FLOOR_SCORE :

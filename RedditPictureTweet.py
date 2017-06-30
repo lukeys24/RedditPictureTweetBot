@@ -28,7 +28,7 @@ TWITTER_USERNAME = ''
 REDDIT_SUBREDDIT = ''
 
 # Added at the end of every tweet
-TWEET_SIGNATURE = ''
+TWEET_SIGNATURE = '#reddit #' + REDDIT_SUBREDDIT
 
 # Delay interval for tweets (Recommended >= 5 to not get locked by twitter)
 TWEET_MINUTES_DELAY = 5
@@ -68,7 +68,7 @@ def get_all_Tweets(twitterHandle) :
         # Loop while we still have tweets, then reload list with new 200 tweets
         while len(new_tweets) > 0:
             # Grab new 200 tweets from twitter account twitterHandle with id less than/equal to last_id
-            new_tweets = api.user_timeline(screen_name=twitterHandle, count=200, max_id=last_id, tweet_mode = 'extended')
+            new_tweets = api.user_timeline(screen_name = twitterHandle, count=200, max_id=last_id, tweet_mode = 'extended')
 
             # Add the new tweets to the list of all tweets
             all_tweets.extend(new_tweets)
@@ -82,7 +82,7 @@ def get_all_Tweets(twitterHandle) :
 def download_image(imageURL) :
     # Download the image
     custom_header = {'user-agent': 'RedditSpacePics /u/spacepictures123'}
-    r = requests.get(imageURL, stream=True, headers=custom_header)
+    r = requests.get(imageURL, stream=True, headers = custom_header)
 
     # If we successfully get URL we save the image
     if r.status_code == 200:
@@ -131,6 +131,9 @@ auth = set_tweepy(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET)
 set_tweepy_access(auth, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
 api = tweepy.API(auth)
 
+# Updates twitter profile description/bio to tell what subreddit we're pulling from
+api.update_profile(description = "Pictures from various subreddits - Currently pulling pictures from /r/" + REDDIT_SUBREDDIT)
+
 # Set the subreddit for posts to grab and tweet
 subreddit = reddit.subreddit(REDDIT_SUBREDDIT)
 
@@ -141,44 +144,46 @@ user_tweets = get_all_Tweets(TWITTER_USERNAME)
 set_tweets = set()
 add_tweets_set(set_tweets, user_tweets)
 
-# Loop through # of tweets from subreddit's hot/top/etc category
-for submission in subreddit.hot(limit=100) :
-    # Text that we will be tweeting
-    text_to_tweet = submission.title + TWEET_SIGNATURE
+# Infinite loop that continuously grabs tweets 100 at a time
+while (True) :
+    # Loop through limit # of tweets from subreddit's hot/top/etc category, use limit = None for retrieve as many as possible
+    for submission in subreddit.hot(limit = 100) :
+        # Text that we will be tweeting
+        text_to_tweet = submission.title + TWEET_SIGNATURE
 
-    # Ensure our tweet meets 140 char limit, reddit post's score is >= our set score
-    # and that we aren't duplicating a tweet
-    if (len(text_to_tweet) <= 140  and submission.score >= POST_FLOOR_SCORE and submission.title not in set_tweets) :
-        # Replace all '/' chars since replace method mistakes it for a directory
-        fileSaveName = submission.title.replace("/", " ") + ".jpg"
+        # Ensure our tweet meets 140 char limit, reddit post's score is >= our set score
+        # and that we aren't duplicating a tweet
+        if (len(text_to_tweet) <= 140  and submission.score >= POST_FLOOR_SCORE and submission.title not in set_tweets) :
+            # Replace all '/' chars since replace method mistakes it for a directory
+            fileSaveName = submission.title.replace("/", " ") + ".jpg"
 
-        # If image download successfull we continue
-        if(download_image(submission.url)) :
+            # If image download is success we continue
+            if(download_image(submission.url)) :
 
-            try:
-                # Checks to see if image is corrupted
-                verifyImage = Image.open(fileSaveName)
+                try:
+                    # Checks to see if image is corrupted
+                    verifyImage = Image.open(fileSaveName)
 
-                # Ensure image size is below twitter's max image size (3.07mb)
-                if (os.stat(fileSaveName).st_size < 3072000):
-                    # Tweets the image
-                    api.update_with_media(fileSaveName, text_to_tweet)
+                    # Ensure image size is below twitter's max image size (3.07mb)
+                    if (os.stat(fileSaveName).st_size < 3072000):
+                        # Tweets the image
+                        api.update_with_media(fileSaveName, text_to_tweet)
 
-                    # Information on what was tweeted and when the next one will be tweeted
-                    print_tweet_info(text_to_tweet)
+                        # Information on what was tweeted and when the next one will be tweeted
+                        print_tweet_info(text_to_tweet)
 
-                    # Waits TWEET_MINUTES_DELAY minutes to tweet next tweet
-                    time.sleep(TWEET_MINUTES_DELAY * 60)
-                else :
-                    print("Did not tweet " + submission.title + " because image is too large")
-            except IOError:
-                print('This file is corrupted - ' + fileSaveName)
+                        # Waits TWEET_MINUTES_DELAY minutes to tweet next tweet
+                        time.sleep(TWEET_MINUTES_DELAY * 60)
+                    else :
+                        print("Did not tweet " + submission.title + " because image is too large")
+                except IOError:
+                    print('This file is corrupted - ' + fileSaveName)
 
-    else :
-        # Prints reason why we didn't tweet the image based on the 3 cases
-        if len(text_to_tweet) > 140 :
-            print("We did not tweet " + submission.title + " because text is too long")
-        elif submission.score < POST_FLOOR_SCORE :
-            print("We did not tweet " + submission.title + " because reddit's post score is too low")
-        elif submission.title in set_tweets :
-            print("We did not tweet " + submission.title + " because it is a duplicate")
+        else :
+            # Prints reason why we didn't tweet the image based on the 3 cases
+            if len(text_to_tweet) > 140 :
+                print("We did not tweet " + submission.title + " because text is too long")
+            elif submission.score < POST_FLOOR_SCORE :
+                print("We did not tweet " + submission.title + " because reddit's post score is too low")
+            elif submission.title in set_tweets :
+                print("We did not tweet " + submission.title + " because it is a duplicate")

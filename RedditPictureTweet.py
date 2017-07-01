@@ -166,16 +166,23 @@ while (True) :
 
                     # Ensure image size is below twitter's max image size (3.07mb)
                     if (os.stat(fileSaveName).st_size < 3072000):
-                        # Tweets the image
-                        api.update_with_media(fileSaveName, text_to_tweet)
+                         # Catches when there's a twitter 130 error
+                        try :
+                            # Attempts to tweet the image
+                            api.update_with_media(fileSaveName, text_to_tweet)
 
-                        # Information on what was tweeted and when the next one will be tweeted
-                        print_tweet_info(text_to_tweet)
+                            # Information on what was tweeted and when the next one will be tweeted
+                            print_tweet_info(text_to_tweet)
 
-                        # Waits TWEET_MINUTES_DELAY minutes to tweet next tweet
-                        time.sleep(TWEET_MINUTES_DELAY * 60)
+                            # Waits TWEET_MINUTES_DELAY minutes to tweet next tweet
+                            time.sleep(TWEET_MINUTES_DELAY * 60)
+                            
+                        except tweepy.error.TweepError :
+                            print("ERROR - Likely encountered twitter's 130 Error when trying to tweet image")
+                            
                     else :
                         print("Did not tweet " + submission.title + " because image is too large")
+                        
                 except IOError:
                     print('This file is corrupted - ' + fileSaveName)
 

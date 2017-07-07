@@ -82,7 +82,11 @@ def get_all_Tweets(twitterHandle) :
 def download_image(imageURL) :
     # Download the image
     custom_header = {'user-agent': 'RedditSpacePics /u/spacepictures123'}
-    r = requests.get(imageURL, stream=True, headers = custom_header)
+    
+    try :
+        r = requests.get(imageURL, stream = True, headers = custom_header)
+    except requests.exceptions.ConnectionError :
+        print(r.status_code)
 
     # If we successfully get URL we save the image
     if r.status_code == 200:
